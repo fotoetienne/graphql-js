@@ -1,12 +1,7 @@
 'use strict';
-
-Object.defineProperty(exports, '__esModule', {
-  value: true,
-});
-exports.UniqueTypeNamesRule = UniqueTypeNamesRule;
-
-var _GraphQLError = require('../../error/GraphQLError.js');
-
+Object.defineProperty(exports, '__esModule', { value: true });
+exports.UniqueTypeNamesRule = void 0;
+const GraphQLError_js_1 = require('../../error/GraphQLError.js');
 /**
  * Unique type names
  *
@@ -23,31 +18,30 @@ function UniqueTypeNamesRule(context) {
     EnumTypeDefinition: checkTypeName,
     InputObjectTypeDefinition: checkTypeName,
   };
-
   function checkTypeName(node) {
     const typeName = node.name.value;
-
-    if (schema !== null && schema !== void 0 && schema.getType(typeName)) {
+    if (schema?.getType(typeName)) {
       context.reportError(
-        new _GraphQLError.GraphQLError(
+        new GraphQLError_js_1.GraphQLError(
           `Type "${typeName}" already exists in the schema. It cannot also be defined in this type definition.`,
-          node.name,
+          { nodes: node.name },
         ),
       );
       return;
     }
-
     if (knownTypeNames[typeName]) {
       context.reportError(
-        new _GraphQLError.GraphQLError(
+        new GraphQLError_js_1.GraphQLError(
           `There can be only one type named "${typeName}".`,
-          [knownTypeNames[typeName], node.name],
+          {
+            nodes: [knownTypeNames[typeName], node.name],
+          },
         ),
       );
     } else {
       knownTypeNames[typeName] = node.name;
     }
-
     return false;
   }
 }
+exports.UniqueTypeNamesRule = UniqueTypeNamesRule;
