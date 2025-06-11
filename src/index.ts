@@ -64,6 +64,7 @@ export {
   GraphQLSkipDirective,
   GraphQLDeprecatedDirective,
   GraphQLSpecifiedByDirective,
+  GraphQLOneOfDirective,
   // "Enum" of Type Kinds
   TypeKind,
   // Constant Deprecation Reason
@@ -339,6 +340,7 @@ export {
   ValidationContext,
   // All validation rules in the GraphQL Specification.
   specifiedRules,
+  recommendedRules,
   // Individual validation rules.
   ExecutableDefinitionsRule,
   FieldsOnCorrectTypeRule,
@@ -366,6 +368,7 @@ export {
   ValuesOfCorrectTypeRule,
   VariablesAreInputTypesRule,
   VariablesInAllowedPositionRule,
+  MaxIntrospectionDepthRule,
   // SDL-specific validation rules
   LoneSchemaDefinitionRule,
   UniqueOperationTypesRule,
@@ -395,6 +398,7 @@ export type {
   GraphQLErrorOptions,
   GraphQLFormattedError,
   GraphQLErrorExtensions,
+  GraphQLFormattedErrorExtensions,
 } from './error/index';
 
 // Utilities for operating on GraphQL type schema and parsed sources.

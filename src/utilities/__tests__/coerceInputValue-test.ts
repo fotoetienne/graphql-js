@@ -183,11 +183,19 @@ describe('coerceInputValue', () => {
   });
 
   describe('for GraphQLInputObject', () => {
+    const DeepObject = new GraphQLInputObjectType({
+      name: 'DeepObject',
+      fields: {
+        foo: { type: new GraphQLNonNull(GraphQLInt) },
+        bar: { type: GraphQLInt },
+      },
+    });
     const TestInputObject = new GraphQLInputObjectType({
       name: 'TestInputObject',
       fields: {
         foo: { type: new GraphQLNonNull(GraphQLInt) },
         bar: { type: GraphQLInt },
+        deepObject: { type: DeepObject },
       },
     });
 
@@ -268,6 +276,136 @@ describe('coerceInputValue', () => {
             'Field "bart" is not defined by type "TestInputObject". Did you mean "bar"?',
           path: [],
           value: { foo: 123, bart: 123 },
+        },
+      ]);
+    });
+
+    it('returns an error for an array type', () => {
+      const result = coerceValue([{ foo: 1 }, { bar: 1 }], TestInputObject);
+      expectErrors(result).to.deep.equal([
+        {
+          error: 'Expected type "TestInputObject" to be an object.',
+          path: [],
+          value: [{ foo: 1 }, { bar: 1 }],
+        },
+      ]);
+    });
+
+    it('returns an error for an array type on a nested field', () => {
+      const result = coerceValue(
+        { foo: 1, deepObject: [1, 2, 3] },
+        TestInputObject,
+      );
+      expectErrors(result).to.deep.equal([
+        {
+          error: 'Expected type "DeepObject" to be an object.',
+          path: ['deepObject'],
+          value: [1, 2, 3],
+        },
+      ]);
+    });
+  });
+
+  describe('for GraphQLInputObject that isOneOf', () => {
+    const TestInputObject = new GraphQLInputObjectType({
+      name: 'TestInputObject',
+      fields: {
+        foo: { type: GraphQLInt },
+        bar: { type: GraphQLInt },
+      },
+      isOneOf: true,
+    });
+
+    it('returns no error for a valid input', () => {
+      const result = coerceValue({ foo: 123 }, TestInputObject);
+      expectValue(result).to.deep.equal({ foo: 123 });
+    });
+
+    it('returns an error if more than one field is specified', () => {
+      const result = coerceValue({ foo: 123, bar: null }, TestInputObject);
+      expectErrors(result).to.deep.equal([
+        {
+          error:
+            'Exactly one key must be specified for OneOf type "TestInputObject".',
+          path: [],
+          value: { foo: 123, bar: null },
+        },
+      ]);
+    });
+
+    it('returns an error the one field is null', () => {
+      const result = coerceValue({ bar: null }, TestInputObject);
+      expectErrors(result).to.deep.equal([
+        {
+          error: 'Field "bar" must be non-null.',
+          path: ['bar'],
+          value: null,
+        },
+      ]);
+    });
+
+    it('returns an error for an invalid field', () => {
+      const result = coerceValue({ foo: NaN }, TestInputObject);
+      expectErrors(result).to.deep.equal([
+        {
+          error: 'Int cannot represent non-integer value: NaN',
+          path: ['foo'],
+          value: NaN,
+        },
+      ]);
+    });
+
+    it('returns multiple errors for multiple invalid fields', () => {
+      const result = coerceValue({ foo: 'abc', bar: 'def' }, TestInputObject);
+      expectErrors(result).to.deep.equal([
+        {
+          error: 'Int cannot represent non-integer value: "abc"',
+          path: ['foo'],
+          value: 'abc',
+        },
+        {
+          error: 'Int cannot represent non-integer value: "def"',
+          path: ['bar'],
+          value: 'def',
+        },
+        {
+          error:
+            'Exactly one key must be specified for OneOf type "TestInputObject".',
+          path: [],
+          value: { foo: 'abc', bar: 'def' },
+        },
+      ]);
+    });
+
+    it('returns error for an unknown field', () => {
+      const result = coerceValue(
+        { foo: 123, unknownField: 123 },
+        TestInputObject,
+      );
+      expectErrors(result).to.deep.equal([
+        {
+          error:
+            'Field "unknownField" is not defined by type "TestInputObject".',
+          path: [],
+          value: { foo: 123, unknownField: 123 },
+        },
+      ]);
+    });
+
+    it('returns error for a misspelled field', () => {
+      const result = coerceValue({ bart: 123 }, TestInputObject);
+      expectErrors(result).to.deep.equal([
+        {
+          error:
+            'Field "bart" is not defined by type "TestInputObject". Did you mean "bar"?',
+          path: [],
+          value: { bart: 123 },
+        },
+        {
+          error:
+            'Exactly one key must be specified for OneOf type "TestInputObject".',
+          path: [],
+          value: { bart: 123 },
         },
       ]);
     });
