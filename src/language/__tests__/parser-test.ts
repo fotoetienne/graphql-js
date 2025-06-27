@@ -767,5 +767,18 @@ describe('Parser', () => {
         expect(varDef.type.name.value).to.equal('Int');
       }
     });
+
+    it('produces sensible error for description on shorthand query', () => {
+      expect(() =>
+        parse(dedent`
+          "This is a description"
+          {
+            field
+          }
+        `),
+      ).to.throw(
+        'Syntax Error: Unexpected description, descriptions are not supported on shorthand queries.',
+      );
+    });
   });
 });

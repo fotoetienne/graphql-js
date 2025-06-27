@@ -270,12 +270,6 @@ export class Parser {
 
     if (keywordToken.kind === TokenKind.NAME) {
       switch (keywordToken.value) {
-        case 'query':
-        case 'mutation':
-        case 'subscription':
-          return this.parseOperationDefinition();
-        case 'fragment':
-          return this.parseFragmentDefinition();
         case 'schema':
           return this.parseSchemaDefinition();
         case 'scalar':
@@ -292,16 +286,35 @@ export class Parser {
           return this.parseInputObjectTypeDefinition();
         case 'directive':
           return this.parseDirectiveDefinition();
+      }
+
+      if (hasDescription && keywordToken.value === 'extend') {
+        throw syntaxError(
+          this._lexer.source,
+          this._lexer.token.start,
+          'Unexpected description, descriptions are not supported on type extensions.',
+        );
+      }
+
+      switch (keywordToken.value) {
+        case 'query':
+        case 'mutation':
+        case 'subscription':
+          return this.parseOperationDefinition();
+        case 'fragment':
+          return this.parseFragmentDefinition();
         case 'extend':
-          if (hasDescription) {
-            throw syntaxError(
-              this._lexer.source,
-              this._lexer.token.start,
-              'Unexpected description, descriptions are not supported on type extensions.',
-            );
-          }
           return this.parseTypeSystemExtension();
       }
+    }
+
+    // Check for shorthand query with description
+    if (hasDescription && keywordToken.kind === TokenKind.BRACE_L) {
+      throw syntaxError(
+        this._lexer.source,
+        this._lexer.token.start,
+        'Unexpected description, descriptions are not supported on shorthand queries.',
+      );
     }
 
     throw this.unexpected(keywordToken);
