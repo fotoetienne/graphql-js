@@ -1,4 +1,4 @@
-import { expect } from 'chai';
+import { assert, expect } from 'chai';
 import { describe, it } from 'mocha';
 
 import { dedent } from '../../__testUtils__/dedent';
@@ -163,25 +163,11 @@ describe('Parser', () => {
       # This comment has a \u0A0A multi-byte character.
       { field(arg: "Has a \u0A0A multi-byte character.") }
     `);
-    const opDef = ast.definitions.find(
-      (d) => d.kind === Kind.OPERATION_DEFINITION,
+
+    expect(ast).to.have.nested.property(
+      'definitions[0].selectionSet.selections[0].arguments[0].value.value',
+      'Has a \u0A0A multi-byte character.',
     );
-    if (!opDef || opDef.kind !== Kind.OPERATION_DEFINITION) {
-      throw new Error('No operation definition found');
-    }
-    const fieldSel = opDef.selectionSet.selections[0];
-    if (fieldSel.kind !== Kind.FIELD) {
-      throw new Error('Expected a field selection');
-    }
-    const args = fieldSel.arguments;
-    if (!args || args.length === 0) {
-      throw new Error('No arguments found');
-    }
-    const argValueNode = args[0].value;
-    if (argValueNode.kind !== Kind.STRING) {
-      throw new Error('Expected a string value');
-    }
-    expect(argValueNode.value).to.equal('Has a \u0A0A multi-byte character.');
   });
 
   it('parses kitchen sink', () => {
@@ -350,7 +336,6 @@ describe('Parser', () => {
 
   it('creates ast from nameless query without variables', () => {
     const result = parse(dedent`
-      "Query description"
       query {
         node {
           id
@@ -360,47 +345,42 @@ describe('Parser', () => {
 
     expectJSON(result).toDeepEqual({
       kind: Kind.DOCUMENT,
-      loc: { start: 0, end: 49 },
+      loc: { start: 0, end: 29 },
       definitions: [
         {
           kind: Kind.OPERATION_DEFINITION,
-          loc: { start: 0, end: 49 },
-          description: {
-            kind: Kind.STRING,
-            loc: { start: 0, end: 19 },
-            block: false,
-            value: 'Query description',
-          },
+          loc: { start: 0, end: 29 },
+          description: undefined,
           operation: 'query',
           name: undefined,
           variableDefinitions: [],
           directives: [],
           selectionSet: {
             kind: Kind.SELECTION_SET,
-            loc: { start: 26, end: 49 },
+            loc: { start: 6, end: 29 },
             selections: [
               {
                 kind: Kind.FIELD,
-                loc: { start: 30, end: 47 },
+                loc: { start: 10, end: 27 },
                 alias: undefined,
                 name: {
                   kind: Kind.NAME,
-                  loc: { start: 30, end: 34 },
+                  loc: { start: 10, end: 14 },
                   value: 'node',
                 },
                 arguments: [],
                 directives: [],
                 selectionSet: {
                   kind: Kind.SELECTION_SET,
-                  loc: { start: 35, end: 47 },
+                  loc: { start: 15, end: 27 },
                   selections: [
                     {
                       kind: Kind.FIELD,
-                      loc: { start: 41, end: 43 },
+                      loc: { start: 21, end: 23 },
                       alias: undefined,
                       name: {
                         kind: Kind.NAME,
-                        loc: { start: 41, end: 43 },
+                        loc: { start: 21, end: 23 },
                         value: 'id',
                       },
                       arguments: [],
@@ -693,13 +673,10 @@ describe('Parser', () => {
           field(a: $a, b: $b)
         }
       `);
-      // Find the operation definition
-      const opDef = result.definitions.find(
-        (d) => d.kind === Kind.OPERATION_DEFINITION,
-      );
-      if (!opDef || opDef.kind !== Kind.OPERATION_DEFINITION) {
-        throw new Error('No operation definition found');
-      }
+
+      const opDef = result.definitions[0];
+      assert(opDef.kind === Kind.OPERATION_DEFINITION);
+
       expect(opDef.description?.value).to.equal('Operation description');
       expect(opDef.name?.value).to.equal('myQuery');
       expect(opDef.variableDefinitions?.[0].description?.value).to.equal(
@@ -712,15 +689,16 @@ describe('Parser', () => {
       expect(opDef.variableDefinitions?.[1].description?.block).to.equal(true);
       expect(opDef.variableDefinitions?.[0].variable.name.value).to.equal('a');
       expect(opDef.variableDefinitions?.[1].variable.name.value).to.equal('b');
-      // Check type names safely
+
       const typeA = opDef.variableDefinitions?.[0].type;
-      if (typeA && typeA.kind === Kind.NAMED_TYPE) {
-        expect(typeA.name.value).to.equal('Int');
-      }
+      assert(typeA?.kind === Kind.NAMED_TYPE);
+
+      expect(typeA.name.value).to.equal('Int');
+
       const typeB = opDef.variableDefinitions?.[1].type;
-      if (typeB && typeB.kind === Kind.NAMED_TYPE) {
-        expect(typeB.name.value).to.equal('String');
-      }
+      assert(typeB?.kind === Kind.NAMED_TYPE);
+
+      expect(typeB.name.value).to.equal('String');
     });
 
     it('parses variable definition with description, default value, and directives', () => {
@@ -732,21 +710,19 @@ describe('Parser', () => {
           field(foo: $foo)
         }
       `);
-      const opDef = result.definitions.find(
-        (d) => d.kind === Kind.OPERATION_DEFINITION,
-      );
-      if (!opDef || opDef.kind !== Kind.OPERATION_DEFINITION) {
-        throw new Error('No operation definition found');
-      }
+
+      const opDef = result.definitions[0];
+      assert(opDef.kind === Kind.OPERATION_DEFINITION);
       const varDef = opDef.variableDefinitions?.[0];
       expect(varDef?.description?.value).to.equal('desc');
       expect(varDef?.variable.name.value).to.equal('foo');
-      if (varDef?.type.kind === Kind.NAMED_TYPE) {
-        expect(varDef.type.name.value).to.equal('Int');
-      }
-      if (varDef?.defaultValue && 'value' in varDef.defaultValue) {
-        expect(varDef.defaultValue.value).to.equal('42');
-      }
+
+      assert(varDef?.type.kind === Kind.NAMED_TYPE);
+      expect(varDef.type.name.value).to.equal('Int');
+
+      assert(varDef?.defaultValue?.kind === Kind.INT);
+      expect(varDef.defaultValue.value).to.equal('42');
+
       expect(varDef?.directives?.[0].name.value).to.equal('dir');
     });
 
@@ -754,18 +730,15 @@ describe('Parser', () => {
       const result = parse('fragment Foo("desc" $foo: Int) on Bar { baz }', {
         allowLegacyFragmentVariables: true,
       });
-      const fragDef = result.definitions.find(
-        (d) => d.kind === Kind.FRAGMENT_DEFINITION,
-      );
-      if (!fragDef || fragDef.kind !== Kind.FRAGMENT_DEFINITION) {
-        throw new Error('No fragment definition found');
-      }
+      const fragDef = result.definitions[0]
+      assert(fragDef.kind === Kind.FRAGMENT_DEFINITION);
+
       const varDef = fragDef.variableDefinitions?.[0];
       expect(varDef?.description?.value).to.equal('desc');
       expect(varDef?.variable.name.value).to.equal('foo');
-      if (varDef?.type.kind === Kind.NAMED_TYPE) {
-        expect(varDef.type.name.value).to.equal('Int');
-      }
+
+      assert(varDef?.type.kind === Kind.NAMED_TYPE);
+      expect(varDef.type.name.value).to.equal('Int');
     });
 
     it('produces sensible error for description on shorthand query', () => {
