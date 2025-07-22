@@ -57,6 +57,15 @@ describe('Parser', () => {
       locations: [{ line: 1, column: 1 }],
     });
 
+    // Throws on first error, the unexpected description.
+    expectSyntaxError(`
+      "Unexpected description"
+      notAnOperation Foo { field }
+    `).to.deep.include({
+      message: 'Syntax Error: Unexpected description, only GraphQL definitions support descriptions.',
+      locations: [{ line: 2, column: 7 }],
+    });
+
     expectSyntaxError('...').to.deep.include({
       message: 'Syntax Error: Unexpected "...".',
       locations: [{ line: 1, column: 1 }],
@@ -750,7 +759,7 @@ describe('Parser', () => {
           }
         `),
       ).to.throw(
-        'Syntax Error: Unexpected description, descriptions are not supported on shorthand queries.',
+        'Syntax Error: Unexpected description, shorthand queries do not support descriptions.',
       );
     });
   });
