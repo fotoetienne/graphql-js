@@ -258,15 +258,24 @@ export class Parser {
    *   - InputObjectTypeDefinition
    */
   parseDefinition(): DefinitionNode {
-    if (this.peek(TokenKind.BRACE_L)) {
-      return this.parseOperationDefinition();
-    }
 
     // Many definitions begin with a description and require a lookahead.
     const hasDescription = this.peekDescription();
     const keywordToken = hasDescription
       ? this._lexer.lookahead()
       : this._lexer.token;
+
+    if (keywordToken.kind === TokenKind.BRACE_L) {
+      // Check for shorthand query with description
+      if (hasDescription) {
+        throw syntaxError(
+          this._lexer.source,
+          this._lexer.token.start,
+          'Unexpected description, shorthand queries do not support descriptions.',
+        );
+      }
+      return this.parseOperationDefinition();
+    }
 
     if (keywordToken.kind === TokenKind.NAME) {
       switch (keywordToken.value) {
@@ -286,35 +295,25 @@ export class Parser {
           return this.parseInputObjectTypeDefinition();
         case 'directive':
           return this.parseDirectiveDefinition();
-      }
-
-      if (hasDescription && keywordToken.value === 'extend') {
-        throw syntaxError(
-          this._lexer.source,
-          this._lexer.token.start,
-          'Unexpected description, descriptions are not supported on type extensions.',
-        );
-      }
-
-      switch (keywordToken.value) {
         case 'query':
         case 'mutation':
         case 'subscription':
           return this.parseOperationDefinition();
         case 'fragment':
           return this.parseFragmentDefinition();
-        case 'extend':
-          return this.parseTypeSystemExtension();
       }
-    }
 
-    // Check for shorthand query with description
-    if (hasDescription && keywordToken.kind === TokenKind.BRACE_L) {
-      throw syntaxError(
-        this._lexer.source,
-        this._lexer.token.start,
-        'Unexpected description, descriptions are not supported on shorthand queries.',
-      );
+      if (hasDescription) {
+        throw syntaxError(
+          this._lexer.source,
+          this._lexer.token.start,
+          'Unexpected description, only GraphQL definitions support descriptions.',
+        );
+      }
+
+      if (keywordToken.value === 'extend') {
+        return this.parseTypeSystemExtension();
+      }
     }
 
     throw this.unexpected(keywordToken);
